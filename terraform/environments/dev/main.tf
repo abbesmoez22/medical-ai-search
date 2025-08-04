@@ -28,7 +28,7 @@ terraform {
     # Backend configuration provided during init by our setup script
     # terraform init -backend-config="bucket=your-terraform-state-bucket"
     key            = "dev/terraform.tfstate"    # Path within the bucket
-    region         = "us-west-2"                # AWS region
+    region         = "us-east-1"                # AWS region
     encrypt        = true                       # Encrypt state file
     dynamodb_table = "medical-ai-search-terraform-locks"  # Prevent concurrent runs
   }

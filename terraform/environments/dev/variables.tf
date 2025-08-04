@@ -23,13 +23,13 @@ variable "environment" {
 variable "aws_region" {
   description = "AWS region where all resources will be created"
   type        = string
-  default     = "us-west-2"  # Oregon - good for US West Coast users
+  default     = "us-east-1"  # Oregon - good for US West Coast users
 }
 
 variable "availability_zones" {
   description = "List of availability zones for high availability"
   type        = list(string)
-  default     = ["us-west-2a", "us-west-2b", "us-west-2c"]  # 3 zones in Oregon
+  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]  # 3 zones in Oregon
 }
 
 # ============================================================================

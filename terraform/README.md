@@ -83,7 +83,7 @@ cd terraform/environments/dev
 # Initialize with backend
 terraform init \
   -backend-config="bucket=<backend-bucket-name>" \
-  -backend-config="region=us-west-2" \
+  -backend-config="region=us-east-1" \
   -backend-config="dynamodb_table=medical-ai-search-terraform-locks"
 
 # Plan and apply
@@ -98,7 +98,7 @@ terraform apply
 CLUSTER_NAME=$(terraform output -raw cluster_name)
 
 # Configure kubectl
-aws eks update-kubeconfig --region us-west-2 --name $CLUSTER_NAME
+aws eks update-kubeconfig --region us-east-1 --name $CLUSTER_NAME
 
 # Verify connection
 kubectl get nodes
@@ -281,7 +281,7 @@ kubectl scale deployment <deployment-name> --replicas=5
 1. **EKS Cluster Access Issues**
    ```bash
    # Update kubeconfig
-   aws eks update-kubeconfig --region us-west-2 --name <cluster-name>
+   aws eks update-kubeconfig --region us-east-1 --name <cluster-name>
    
    # Check IAM permissions
    aws sts get-caller-identity

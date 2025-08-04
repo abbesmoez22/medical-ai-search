@@ -24,7 +24,7 @@ if [ -f "$(dirname "$0")/../.env" ]; then
 fi
 
 PROJECT_NAME=${PROJECT_NAME:-"medical-ai-search"}
-AWS_REGION=${AWS_REGION:-"us-west-2"}
+AWS_REGION=${AWS_REGION:-"us-east-1"}
 
 # Parse arguments
 ENVIRONMENT=""

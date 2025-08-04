@@ -87,7 +87,7 @@ Amazon Web Services (AWS) is like a **giant computer rental company** that offer
 ### 🗺️ **AWS Regions & Availability Zones**
 
 ```
-Region (us-west-2 - Oregon)
+Region (us-east-1 - N. Virginia)
 ├── Availability Zone A (Data Center 1)
 ├── Availability Zone B (Data Center 2)
 └── Availability Zone C (Data Center 3)
