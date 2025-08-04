@@ -52,7 +52,7 @@ variable "public_subnet_cidrs" {
 
 variable "private_subnet_cidrs" {
   description = "IP ranges for private subnets (application servers)"
-  type        = string
+  type        = list(string)
   default     = ["10.0.10.0/24", "10.0.20.0/24", "10.0.30.0/24"]  # ~250 IPs each
 }
 
