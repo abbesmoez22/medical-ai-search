@@ -1,0 +1,35 @@
+# 1. Set up environment
+cd terraform
+cp env.example .env
+# Edit .env with your AWS credentials
+
+# 2. Create virtual environment (optional)
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# 3. Deploy infrastructure
+./scripts/setup.sh dev
+
+# Other options:
+./scripts/setup.sh --backend-only   # Just setup backend
+./scripts/setup.sh --info dev       # Show deployment info
+
+📊 What You Get - AWS Infra
+EKS Cluster ready for your microservices
+PostgreSQL Database for transactional data
+Redis Cache for session management and caching
+S3 Buckets organized by purpose (documents, ML artifacts, logs)
+ECR Repositories for your container images
+CloudWatch Dashboards for monitoring
+Secure Networking with proper isolation
+
+# 3. Alternative: Manual Deployment
+# Setup backend first
+cd terraform/shared
+terraform init && terraform apply
+
+# Deploy development environment
+cd ../environments/dev
+terraform init -backend-config="bucket=<backend-bucket>"
+terraform plan && terraform apply

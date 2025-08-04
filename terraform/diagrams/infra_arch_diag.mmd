@@ -1,0 +1,108 @@
+---
+config:
+  layout: dagre
+---
+flowchart TB
+ subgraph subGraph0["Public Subnets"]
+        ALB["Application Load Balancer"]
+        NAT["NAT Gateway"]
+        IGW["Internet Gateway"]
+  end
+ subgraph subGraph1["Kubernetes Services"]
+        UserSvc["User Service"]
+        SearchSvc["Search Service"]
+        ContentSvc["Content Service"]
+        AISvc["AI Service"]
+        AnalyticsSvc["Analytics Service"]
+        NotifSvc["Notification Service"]
+  end
+ subgraph subGraph2["EKS Cluster"]
+        SysNodes["System Node Group<br>t3.medium"]
+        AppNodes["Application Node Group<br>m5.large/t3.large"]
+        subGraph1
+  end
+ subgraph subGraph3["Private Subnets"]
+        subGraph2
+        Redis["ElastiCache Redis<br>cache.r6g.large<br>Encrypted"]
+  end
+ subgraph subGraph4["Database Subnets"]
+        RDS["RDS PostgreSQL<br>db.r5.large<br>Multi-AZ<br>Encrypted"]
+        RDSReplica["Read Replica<br>Production Only"]
+  end
+ subgraph subGraph5["VPC - 10.0.0.0/16"]
+        subGraph0
+        subGraph3
+        subGraph4
+  end
+ subgraph subGraph6["S3 Storage"]
+        DocBucket["Documents Bucket<br>Medical Papers"]
+        MLBucket["ML Artifacts Bucket<br>Models &amp; Training Data"]
+        StaticBucket["Static Assets Bucket<br>Frontend &amp; Images"]
+        LogsBucket["Logs Bucket<br>Application Logs"]
+        BackupBucket["Backup Bucket<br>Database Backups"]
+  end
+ subgraph subGraph7["Container Registry"]
+        ECR["ECR Repositories<br>- user-service<br>- search-service<br>- content-service<br>- ai-service<br>- analytics-service<br>- notification-service<br>- frontend"]
+  end
+ subgraph subGraph8["Monitoring & Security"]
+        CW["CloudWatch<br>Dashboards &amp; Alarms"]
+        SM["Secrets Manager<br>Database Credentials"]
+        IAM["IAM Roles &amp; Policies<br>IRSA Integration"]
+        VPCLogs["VPC Flow Logs"]
+  end
+ subgraph subGraph9["AWS Cloud - Medical AI Search Platform"]
+        subGraph5
+        subGraph6
+        subGraph7
+        subGraph8
+  end
+ subgraph External["External"]
+        Internet["Internet"]
+        Developers["Developers"]
+        CICD["CI/CD Pipeline"]
+  end
+    Internet --> IGW
+    IGW --> ALB
+    ALB --> AppNodes
+    AppNodes --> UserSvc & SearchSvc & ContentSvc & AISvc & AnalyticsSvc & NotifSvc & StaticBucket & CW
+    UserSvc --> RDS & Redis
+    SearchSvc --> RDS & Redis
+    ContentSvc --> RDS & DocBucket
+    AISvc --> RDS & Redis & MLBucket
+    AnalyticsSvc --> RDS
+    SysNodes --> CW
+    RDS --> CW & SM
+    Redis --> CW
+    Developers --> EKS["EKS"]
+    CICD --> ECR & EKS
+     ALB:::network
+     NAT:::network
+     IGW:::network
+     UserSvc:::compute
+     SearchSvc:::compute
+     ContentSvc:::compute
+     AISvc:::compute
+     AnalyticsSvc:::compute
+     NotifSvc:::compute
+     SysNodes:::compute
+     AppNodes:::compute
+     Redis:::database
+     RDS:::database
+     RDSReplica:::database
+     DocBucket:::storage
+     MLBucket:::storage
+     StaticBucket:::storage
+     LogsBucket:::storage
+     BackupBucket:::storage
+     ECR:::storage
+     CW:::monitoring
+     SM:::monitoring
+     IAM:::monitoring
+     VPCLogs:::network
+     EKS:::compute
+    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef compute fill:#EC7211,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef storage fill:#3F48CC,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef database fill:#C925D1,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef network fill:#8C4FFF,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef monitoring fill:#759C3E,stroke:#232F3E,stroke-width:2px,color:#fff
