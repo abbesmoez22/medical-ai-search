@@ -18,16 +18,11 @@ if ! aws sts get-caller-identity >/dev/null 2>&1; then
     exit 1
 fi
 
-# Load environment variables
-if [ -f "$(dirname "$0")/../.env" ]; then
-    export $(grep -v '^#' "$(dirname "$0")/../.env" | xargs)
-fi
-
-PROJECT_NAME=${PROJECT_NAME:-"medical-ai-search"}
+PROJECT_NAME="medical-ai-search"
 AWS_REGION=${AWS_REGION:-"us-east-1"}
 
 # Parse arguments
-ENVIRONMENT=""
+ENVIRONMENT="dev"
 BACKEND_ONLY=false
 INFO_ONLY=false
 
