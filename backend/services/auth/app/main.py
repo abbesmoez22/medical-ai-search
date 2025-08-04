@@ -73,7 +73,7 @@ app = FastAPI(
 # Add middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_HOSTS,
+    allow_origins=settings.allowed_hosts_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,7 +81,7 @@ app.add_middleware(
 
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=settings.ALLOWED_HOSTS,
+    allowed_hosts=settings.allowed_hosts_list,
 )
 
 
@@ -149,9 +149,9 @@ async def health_check() -> Dict[str, Any]:
         # Check database connection
         db_status = "healthy"
         try:
-            from app.core.database import get_db
+            from sqlalchemy import text
             async with engine.begin() as conn:
-                await conn.execute("SELECT 1")
+                await conn.execute(text("SELECT 1"))
         except Exception:
             db_status = "unhealthy"
         

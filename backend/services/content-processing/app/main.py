@@ -7,6 +7,7 @@ from app.core.database import create_tables
 from app.services.document_processor import DocumentProcessorService
 from app.api.v1.processing import router as processing_router
 from app.api.health import router as health_router
+from app.core.redis import redis_client
 import structlog
 
 # Configure logging

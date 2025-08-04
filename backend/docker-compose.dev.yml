@@ -188,6 +188,9 @@ services:
       - DEBUG=true
       - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/auth_db
       - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=your-super-secret-key-change-this-in-production
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - ALLOWED_HOSTS=localhost,127.0.0.1
     ports:
       - "8010:8000"
     networks:
@@ -215,10 +218,10 @@ services:
       - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/document_db
       - REDIS_URL=redis://redis:6379/1
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-test_access_key}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-test_secret_key}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=us-east-1
-      - S3_BUCKET_NAME=medical-ai-documents
+      - S3_BUCKET_NAME=medical-ai-search-dev-documents-bc27be12
       - JWT_SECRET_KEY=your-super-secret-jwt-key-change-this-in-production
       - JWT_ALGORITHM=HS256
       - AUTH_SERVICE_URL=http://medical-ai-auth-service:8000
@@ -240,20 +243,92 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       kafka:
         condition: service_healthy
     environment:
       - DEBUG=true
       - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/processing_db
+      - REDIS_URL=redis://redis:6379/2
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-test_access_key}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-test_secret_key}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=us-east-1
       - JWT_SECRET_KEY=your-super-secret-jwt-key-change-this-in-production
       - JWT_ALGORITHM=HS256
       - AUTH_SERVICE_URL=http://medical-ai-auth-service:8000
     ports:
       - "8013:8000"
+    networks:
+      - medical-ai-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  search-indexing-service:
+    build:
+      context: ./services/search-indexing
+      dockerfile: Dockerfile
+    container_name: medical-ai-search-indexing
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      - DEBUG=true
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/search_db
+      - REDIS_URL=redis://redis:6379/3
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ELASTICSEARCH_INDEX_PREFIX=medical-ai
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TOPIC_PREFIX=medical-ai-platform
+      - JWT_SECRET_KEY=your-super-secret-jwt-key-change-this-in-production
+      - JWT_ALGORITHM=HS256
+      - AUTH_SERVICE_URL=http://medical-ai-auth-service:8000
+      - BATCH_SIZE=100
+      - INDEX_TIMEOUT=30
+    ports:
+      - "8014:8000"
+    networks:
+      - medical-ai-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  search-api-service:
+    build:
+      context: ./services/search-api
+      dockerfile: Dockerfile
+    container_name: medical-ai-search-api
+    depends_on:
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - DEBUG=true
+      - REDIS_URL=redis://redis:6379/4
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ELASTICSEARCH_INDEX_PREFIX=medical-ai
+      - JWT_SECRET_KEY=your-super-secret-jwt-key-change-this-in-production
+      - JWT_ALGORITHM=HS256
+      - AUTH_SERVICE_URL=http://medical-ai-auth-service:8000
+      - DEFAULT_PAGE_SIZE=20
+      - MAX_PAGE_SIZE=100
+      - SEARCH_TIMEOUT=30
+      - CACHE_TTL_SECONDS=300
+    ports:
+      - "8015:8000"
     networks:
       - medical-ai-network
     healthcheck:

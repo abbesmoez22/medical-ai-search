@@ -41,6 +41,32 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
+@router.get("/validate")
+async def validate_token(
+    current_user: User = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Validate JWT token and return user information
+    
+    This endpoint is used by other services to validate tokens
+    and get user information for authorization purposes.
+    
+    Args:
+        current_user: User from valid JWT token
+        
+    Returns:
+        Dict containing user info and validation status
+    """
+    return {
+        "valid": True,
+        "user_id": str(current_user.id),
+        "email": current_user.email,
+        "role": current_user.role,
+        "is_active": current_user.is_active,
+        "is_verified": current_user.is_verified
+    }
+
+
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register_user(
     user_data: UserCreate,

@@ -8,6 +8,7 @@ pydantic-settings==2.1.0
 sqlalchemy==2.0.23
 alembic==1.13.0
 asyncpg==0.29.0
+redis==5.0.1
 
 # PDF Processing
 PyPDF2==3.0.1
@@ -15,7 +16,8 @@ pdfplumber==0.10.3
 pymupdf==1.23.8
 
 # Medical NER and NLP
-spacy==3.7.2
+numpy==1.24.3
+spacy==3.6.1
 https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.3/en_core_sci_md-0.5.3.tar.gz
 
 # Text Processing

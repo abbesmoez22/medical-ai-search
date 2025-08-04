@@ -56,7 +56,7 @@ check_docker_compose() {
 check_ports() {
     print_status "Checking for port conflicts..."
     
-    PORTS=(5433 6380 9095 9201 8100 8102 8003 8010 8011 8013)
+    PORTS=(5433 6380 9095 9201 8100 8102 8003 8010 8011 8013 8014 8015)
     CONFLICTS=()
     
     for port in "${PORTS[@]}"; do
@@ -193,6 +193,8 @@ show_service_info() {
     echo "🔐 Auth Service:           http://localhost:8010"
     echo "📄 Document Management:    http://localhost:8011"  
     echo "⚙️  Content Processing:     http://localhost:8013"
+    echo "🔍 Search Indexing:        http://localhost:8014"
+    echo "🔎 Search API:             http://localhost:8015"
     echo "🌐 Kong Gateway:           http://localhost:8100"
     echo "🔧 Kong Admin:             http://localhost:8102"
     echo "🗄️  PostgreSQL:             localhost:5433"
@@ -205,19 +207,25 @@ show_service_info() {
     echo "🔐 Auth API:               http://localhost:8010/docs"
     echo "📄 Document API:           http://localhost:8011/docs"
     echo "⚙️  Processing API:         http://localhost:8013/docs"
+    echo "🔍 Search Indexing API:    http://localhost:8014/docs"
+    echo "🔎 Search API:             http://localhost:8015/docs"
     echo
     echo "🧪 Testing the Setup:"
     echo "--------------------"
     echo "1. Test auth service:      curl http://localhost:8010/health"
     echo "2. Test document service:  curl http://localhost:8011/health"
     echo "3. Test processing service: curl http://localhost:8013/health"
+    echo "4. Test search indexing:   curl http://localhost:8014/health"
+    echo "5. Test search API:        curl http://localhost:8015/health"
     echo
     echo "📚 Next Steps:"
     echo "-------------"
     echo "1. Register a user:        POST http://localhost:8010/api/v1/auth/register"
     echo "2. Login to get token:     POST http://localhost:8010/api/v1/auth/login"
     echo "3. Upload a document:      POST http://localhost:8011/api/v1/documents/upload"
-    echo "4. Check processing:       Monitor logs with 'docker-compose -f docker-compose.dev.yml logs -f'"
+    echo "4. Check processing:       Monitor processing logs"
+    echo "5. Search documents:       POST http://localhost:8015/api/v1/search/"
+    echo "6. Monitor logs:           docker-compose -f docker-compose.dev.yml logs -f"
     echo
     echo "🛠️  Useful Commands:"
     echo "------------------"

@@ -25,7 +25,7 @@ logger = structlog.get_logger()
 class DocumentProcessorService:
     def __init__(self):
         self.pdf_processor = PDFProcessor()
-        self.medical_ner = MedicalNERService()
+        self.medical_ner = None  # Will be initialized asynchronously
         self.s3_client = None
         self.kafka_consumer = None
         self.kafka_producer = None
@@ -43,6 +43,13 @@ class DocumentProcessorService:
                 region_name=settings.AWS_REGION
             )
             
+            # Initialize Medical NER service asynchronously
+            logger.info("Initializing Medical NER service...")
+            self.medical_ner = await asyncio.get_event_loop().run_in_executor(
+                None, MedicalNERService
+            )
+            logger.info("Medical NER service initialized")
+            
             # Initialize Kafka producer
             self.kafka_producer = KafkaProducer(
                 bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
@@ -50,8 +57,7 @@ class DocumentProcessorService:
                 key_serializer=lambda x: str(x).encode('utf-8') if x else None,
                 acks='all',
                 retries=3,
-                max_in_flight_requests_per_connection=1,
-                enable_idempotence=True
+                max_in_flight_requests_per_connection=1
             )
             
             logger.info("Document processor service initialized successfully")

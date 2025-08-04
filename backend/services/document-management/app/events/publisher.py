@@ -24,8 +24,7 @@ class DocumentEventPublisher:
                 key_serializer=lambda x: str(x).encode('utf-8') if x else None,
                 acks='all',
                 retries=3,
-                max_in_flight_requests_per_connection=1,
-                enable_idempotence=True
+                max_in_flight_requests_per_connection=1
             )
             logger.info("Kafka producer initialized", servers=settings.KAFKA_BOOTSTRAP_SERVERS)
         except Exception as e:

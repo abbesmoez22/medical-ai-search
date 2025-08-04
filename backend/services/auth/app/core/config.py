@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     KAFKA_TOPIC_PREFIX: str = Field(default="medical-ai-platform", description="Kafka topic prefix")
     
     # CORS
-    ALLOWED_HOSTS: List[str] = Field(default=["*"], description="Allowed hosts for CORS")
+    ALLOWED_HOSTS: str = Field(default="*", description="Allowed hosts for CORS (comma-separated)")
     
     # Rate Limiting
     RATE_LIMIT_REQUESTS: int = Field(default=100, description="Rate limit requests per minute")
@@ -55,11 +55,12 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_ID: Optional[str] = Field(default=None, description="GitHub OAuth client ID")
     GITHUB_CLIENT_SECRET: Optional[str] = Field(default=None, description="GitHub OAuth client secret")
     
-    @validator("ALLOWED_HOSTS", pre=True)
-    def parse_allowed_hosts(cls, v):
-        if isinstance(v, str):
-            return [host.strip() for host in v.split(",")]
-        return v
+    @property
+    def allowed_hosts_list(self) -> List[str]:
+        """Convert ALLOWED_HOSTS string to list"""
+        if self.ALLOWED_HOSTS == "*":
+            return ["*"]
+        return [host.strip() for host in self.ALLOWED_HOSTS.split(",")]
     
     @validator("KAFKA_BOOTSTRAP_SERVERS", pre=True)
     def parse_kafka_servers(cls, v):
@@ -68,7 +69,6 @@ class Settings(BaseSettings):
         return v
     
     class Config:
-        env_file = ".env"
         case_sensitive = True
 
 
