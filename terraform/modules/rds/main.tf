@@ -96,43 +96,51 @@ resource "aws_db_parameter_group" "main" {
 
   # Performance optimization parameters
   parameter {
-    name  = "shared_preload_libraries"
-    value = "pg_stat_statements"
+    name         = "shared_preload_libraries"
+    value        = "pg_stat_statements"
+    apply_method = "pending-reboot"  # Static parameter requires reboot
   }
 
   parameter {
-    name  = "log_statement"
-    value = "all"
+    name         = "log_statement"
+    value        = "all"
+    apply_method = "immediate"
   }
 
   parameter {
-    name  = "log_min_duration_statement"
-    value = "1000" # Log queries taking more than 1 second
+    name         = "log_min_duration_statement"
+    value        = "1000" # Log queries taking more than 1 second
+    apply_method = "immediate"
   }
 
   parameter {
-    name  = "log_connections"
-    value = "1"
+    name         = "log_connections"
+    value        = "1"
+    apply_method = "immediate"
   }
 
   parameter {
-    name  = "log_disconnections"
-    value = "1"
+    name         = "log_disconnections"
+    value        = "1"
+    apply_method = "immediate"
   }
 
   parameter {
-    name  = "max_connections"
-    value = var.max_connections
+    name         = "max_connections"
+    value        = var.max_connections
+    apply_method = "pending-reboot"  # Static parameter requires reboot
   }
 
   parameter {
-    name  = "work_mem"
-    value = "16384" # 16MB
+    name         = "work_mem"
+    value        = "16384" # 16MB
+    apply_method = "immediate"
   }
 
   parameter {
-    name  = "effective_cache_size"
-    value = "524288" # 4GB
+    name         = "effective_cache_size"
+    value        = "524288" # 4GB
+    apply_method = "immediate"
   }
 
   tags = merge(var.common_tags, {

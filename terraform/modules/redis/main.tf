@@ -54,7 +54,7 @@ resource "aws_security_group" "redis" {
 
 # Parameter Group for Redis optimization
 resource "aws_elasticache_parameter_group" "main" {
-  family = "redis7.x"
+  family = "redis7"
   name   = "${var.project_name}-${var.environment}-redis-params"
 
   # Memory optimization
@@ -63,21 +63,9 @@ resource "aws_elasticache_parameter_group" "main" {
     value = "allkeys-lru"
   }
 
-  # Persistence configuration
-  parameter {
-    name  = "save"
-    value = "900 1 300 10 60 10000"
-  }
-
   # Connection timeout
   parameter {
     name  = "timeout"
-    value = "300"
-  }
-
-  # TCP keepalive
-  parameter {
-    name  = "tcp-keepalive"
     value = "300"
   }
 

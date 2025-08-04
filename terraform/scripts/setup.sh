@@ -52,11 +52,11 @@ if [ "$BACKEND_ONLY" = true ] || [ "$INFO_ONLY" = false ]; then
     echo "Setting up Terraform backend..."
     cd "$(dirname "$0")/../shared"
     terraform init
-    terraform apply -auto-approve
+    terraform apply -auto-approve -var="environment=shared"
     
-    BACKEND_BUCKET=$(terraform output -raw backend_config | jq -r '.bucket')
-    BACKEND_REGION=$(terraform output -raw backend_config | jq -r '.region')
-    BACKEND_DYNAMODB_TABLE=$(terraform output -raw backend_config | jq -r '.dynamodb_table')
+    BACKEND_BUCKET=$(terraform output -raw backend_bucket)
+    BACKEND_REGION=$(terraform output -raw backend_region)
+    BACKEND_DYNAMODB_TABLE=$(terraform output -raw backend_dynamodb_table)
     
     echo "Backend setup complete"
     
@@ -85,7 +85,8 @@ if [ -n "$ENVIRONMENT" ]; then
     terraform init \
         -backend-config="bucket=$BACKEND_BUCKET" \
         -backend-config="region=$BACKEND_REGION" \
-        -backend-config="dynamodb_table=$BACKEND_DYNAMODB_TABLE"
+        -backend-config="dynamodb_table=$BACKEND_DYNAMODB_TABLE" \
+        -backend-config="key=dev/terraform.tfstate"
     
     # Deploy
     terraform plan -out="$ENVIRONMENT.tfplan"

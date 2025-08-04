@@ -1,9 +1,7 @@
 # ============================================================================
-# DEVELOPMENT ENVIRONMENT - MAIN ORCHESTRATION
+# DEVELOPMENT ENVIRONMENT - FULL INFRASTRUCTURE
 # ============================================================================
-# This file brings together all our infrastructure modules to create a complete
-# development environment. Think of this as the blueprint that builds our entire
-# cloud city by combining all the individual components.
+# Complete infrastructure with VPC, EKS, RDS, Redis, and S3
 
 terraform {
   required_version = ">= 1.0"
@@ -22,20 +20,14 @@ terraform {
     }
   }
 
-  # Configure remote state storage
-  # This stores our infrastructure state in S3 for team collaboration
   backend "s3" {
-    # Backend configuration provided during init by our setup script
-    # terraform init -backend-config="bucket=your-terraform-state-bucket"
-    key            = "dev/terraform.tfstate"    # Path within the bucket
-    region         = "us-east-1"                # AWS region
-    encrypt        = true                       # Encrypt state file
-    dynamodb_table = "medical-ai-search-terraform-locks"  # Prevent concurrent runs
+    key            = "dev/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "medical-ai-search-terraform-locks"
   }
 }
 
-# Configure the AWS provider with default tags
-# All resources will automatically get these tags
 provider "aws" {
   region = var.aws_region
 
@@ -46,92 +38,166 @@ provider "aws" {
   }
 }
 
-# Generate a secure authentication token for Redis
-# This password protects our cache from unauthorized access
+# Generate Redis auth token
 resource "random_password" "redis_auth_token" {
-  length  = 32        # Long password for security
-  special = false     # No special chars (Redis compatibility)
+  length  = 32
+  special = false
 }
 
-# Local configuration values specific to development environment
-# These override the default values for cost optimization in dev
 locals {
   environment = "dev"
   
   # Development-specific overrides
   node_group_scaling = {
     system = {
-      desired_size = 2
+      desired_size = 1
       max_size     = 3
       min_size     = 1
     }
     application = {
-      desired_size = 2
-      max_size     = 5
+      desired_size = 1
+      max_size     = 3
       min_size     = 1
     }
   }
 }
 
 # ============================================================================
-# MODULE CALLS - BUILDING OUR INFRASTRUCTURE
+# INFRASTRUCTURE MODULES
 # ============================================================================
-# Each module call below creates a specific part of our infrastructure
-# Order matters: VPC first, then IAM, then services that depend on them
 
-# 1. VPC Module - Build the network foundation
-# Creates our private cloud network with subnets across multiple zones
+# 1. VPC Module - Network foundation
 module "vpc" {
   source = "../../modules/vpc"
 
   project_name             = var.project_name
   environment              = local.environment
-  vpc_cidr                = var.vpc_cidr                    # Main network range (10.0.0.0/16)
-  public_subnet_cidrs     = var.public_subnet_cidrs        # Internet-accessible subnets
-  private_subnet_cidrs    = var.private_subnet_cidrs       # Application subnets
-  database_subnet_cidrs   = var.database_subnet_cidrs      # Database-only subnets
-  log_retention_days      = var.log_retention_days         # How long to keep logs
+  vpc_cidr                = var.vpc_cidr
+  public_subnet_cidrs     = var.public_subnet_cidrs
+  private_subnet_cidrs    = var.private_subnet_cidrs
+  database_subnet_cidrs   = var.database_subnet_cidrs
+  log_retention_days      = var.log_retention_days
   common_tags             = var.common_tags
 }
 
-# 2. IAM Module - Set up security roles and permissions
-# Creates all the IAM roles needed for EKS, applications, and AWS services
-module "iam" {
-  source = "../../modules/iam"
+# 2. Basic IAM Roles (without complex OIDC dependencies for now)
+resource "aws_iam_role" "eks_cluster" {
+  name = "${var.project_name}-${local.environment}-eks-cluster-role"
 
-  project_name      = var.project_name
-  environment       = local.environment
-  oidc_provider_arn = module.eks.oidc_provider_arn         # From EKS for secure pod authentication
-  oidc_provider_url = module.eks.oidc_provider_url         # From EKS for secure pod authentication
-  common_tags       = var.common_tags
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "eks.amazonaws.com"
+        }
+      }
+    ]
+  })
 
-  depends_on = [module.eks]  # Wait for EKS to create OIDC provider first
+  tags = merge(var.common_tags, {
+    Name = "${var.project_name}-${local.environment}-eks-cluster-role"
+  })
 }
 
-# 3. EKS Module - Create the Kubernetes cluster
-# Sets up our container orchestration platform where applications will run
-module "eks" {
-  source = "../../modules/eks"
-
-  project_name               = var.project_name
-  environment                = local.environment
-  eks_version                = var.eks_version              # Kubernetes version
-  vpc_id                     = module.vpc.vpc_id            # Use the VPC we created
-  vpc_cidr_block            = module.vpc.vpc_cidr_block     # For security group rules
-  private_subnet_ids        = module.vpc.private_subnet_ids # Where to place worker nodes
-  public_subnet_ids         = module.vpc.public_subnet_ids  # For load balancers
-  cluster_role_arn          = module.iam.eks_cluster_role_arn       # IAM role for cluster
-  node_group_role_arn       = module.iam.eks_node_group_role_arn    # IAM role for nodes
-  ebs_csi_driver_role_arn   = module.iam.ebs_csi_driver_role_arn    # IAM role for storage
-  node_group_instance_types = var.node_group_instance_types         # EC2 instance types
-  node_group_scaling        = local.node_group_scaling              # Auto-scaling config
-  log_retention_days        = var.log_retention_days
-  common_tags               = var.common_tags
-
-  depends_on = [module.vpc, module.iam]
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.eks_cluster.name
 }
 
-# RDS Module
+resource "aws_iam_role" "eks_node_group" {
+  name = "${var.project_name}-${local.environment}-eks-node-group-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = merge(var.common_tags, {
+    Name = "${var.project_name}-${local.environment}-eks-node-group-role"
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_worker_node_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.eks_node_group.name
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.eks_node_group.name
+}
+
+resource "aws_iam_role_policy_attachment" "eks_container_registry_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.eks_node_group.name
+}
+
+# 3. EKS Cluster
+resource "aws_eks_cluster" "main" {
+  name     = "${var.project_name}-${local.environment}-cluster"
+  role_arn = aws_iam_role.eks_cluster.arn
+  version  = var.eks_version
+
+  vpc_config {
+    subnet_ids              = concat(module.vpc.private_subnet_ids, module.vpc.public_subnet_ids)
+    endpoint_private_access = true
+    endpoint_public_access  = true
+  }
+
+  enabled_cluster_log_types = ["api", "audit"]
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_cluster_policy,
+  ]
+
+  tags = merge(var.common_tags, {
+    Name = "${var.project_name}-${local.environment}-eks-cluster"
+  })
+}
+
+# 4. EKS Node Group
+resource "aws_eks_node_group" "main" {
+  cluster_name    = aws_eks_cluster.main.name
+  node_group_name = "${var.project_name}-${local.environment}-node-group"
+  node_role_arn   = aws_iam_role.eks_node_group.arn
+  subnet_ids      = module.vpc.private_subnet_ids
+
+  capacity_type  = "ON_DEMAND"
+  instance_types = var.node_group_instance_types.application
+
+  scaling_config {
+    desired_size = local.node_group_scaling.application.desired_size
+    max_size     = local.node_group_scaling.application.max_size
+    min_size     = local.node_group_scaling.application.min_size
+  }
+
+  update_config {
+    max_unavailable = 1
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_worker_node_policy,
+    aws_iam_role_policy_attachment.eks_cni_policy,
+    aws_iam_role_policy_attachment.eks_container_registry_policy,
+  ]
+
+  tags = merge(var.common_tags, {
+    Name = "${var.project_name}-${local.environment}-node-group"
+  })
+}
+
+# 5. RDS Module - PostgreSQL database
 module "rds" {
   source = "../../modules/rds"
 
@@ -139,21 +205,21 @@ module "rds" {
   environment               = local.environment
   vpc_id                    = module.vpc.vpc_id
   database_subnet_ids       = module.vpc.database_subnet_ids
-  allowed_security_groups   = [module.eks.cluster_security_group_id]
+  allowed_security_groups   = [aws_eks_cluster.main.vpc_config[0].cluster_security_group_id]
   instance_class            = var.rds_instance_class
   allocated_storage         = var.rds_allocated_storage
   max_allocated_storage     = var.rds_max_allocated_storage
   multi_az                  = false # Single AZ for dev
   backup_retention_period   = 3     # Shorter retention for dev
-  enable_monitoring         = var.enable_monitoring
+  enable_monitoring         = false # Disabled for dev cost savings
   enable_deletion_protection = false # Allow deletion in dev
   create_read_replica       = false  # No read replica in dev
   common_tags               = var.common_tags
 
-  depends_on = [module.vpc, module.eks]
+  depends_on = [module.vpc, aws_eks_cluster.main]
 }
 
-# Redis Module
+# 6. Redis Module - Cache
 module "redis" {
   source = "../../modules/redis"
 
@@ -161,7 +227,7 @@ module "redis" {
   environment             = local.environment
   vpc_id                  = module.vpc.vpc_id
   private_subnet_ids      = module.vpc.private_subnet_ids
-  allowed_security_groups = [module.eks.cluster_security_group_id]
+  allowed_security_groups = [aws_eks_cluster.main.vpc_config[0].cluster_security_group_id]
   node_type               = var.redis_node_type
   num_cache_clusters      = 1 # Single node for dev
   auth_token              = random_password.redis_auth_token.result
@@ -169,10 +235,10 @@ module "redis" {
   log_retention_days      = var.log_retention_days
   common_tags             = var.common_tags
 
-  depends_on = [module.vpc, module.eks]
+  depends_on = [module.vpc, aws_eks_cluster.main]
 }
 
-# S3 Module
+# 7. S3 Module - Object storage
 module "s3" {
   source = "../../modules/s3"
 
@@ -180,88 +246,20 @@ module "s3" {
   environment                = local.environment
   cors_allowed_origins       = ["*"] # Open CORS for dev
   log_retention_days         = 90    # Shorter retention for dev
-  enable_monitoring          = var.enable_monitoring
+  enable_monitoring          = false # Disabled for dev cost savings
   bucket_size_alarm_threshold = 5368709120 # 5GB for dev
   common_tags                = var.common_tags
 }
 
-# CloudWatch Dashboard for monitoring
-resource "aws_cloudwatch_dashboard" "main" {
-  dashboard_name = "${var.project_name}-${local.environment}-dashboard"
+# ============================================================================
+# MONITORING AND OUTPUTS
+# ============================================================================
 
-  dashboard_body = jsonencode({
-    widgets = [
-      {
-        type   = "metric"
-        x      = 0
-        y      = 0
-        width  = 12
-        height = 6
-
-        properties = {
-          metrics = [
-            ["AWS/EKS", "cluster_failed_request_count", "ClusterName", module.eks.cluster_name],
-            ["AWS/EKS", "cluster_request_total", "ClusterName", module.eks.cluster_name]
-          ]
-          view    = "timeSeries"
-          stacked = false
-          region  = var.aws_region
-          title   = "EKS Cluster Metrics"
-          period  = 300
-        }
-      },
-      {
-        type   = "metric"
-        x      = 0
-        y      = 6
-        width  = 12
-        height = 6
-
-        properties = {
-          metrics = [
-            ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", module.rds.db_instance_id],
-            ["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", module.rds.db_instance_id]
-          ]
-          view    = "timeSeries"
-          stacked = false
-          region  = var.aws_region
-          title   = "RDS Metrics"
-          period  = 300
-        }
-      },
-      {
-        type   = "metric"
-        x      = 0
-        y      = 12
-        width  = 12
-        height = 6
-
-        properties = {
-          metrics = [
-            ["AWS/ElastiCache", "CPUUtilization", "CacheClusterId", "${module.redis.redis_replication_group_id}-001"],
-            ["AWS/ElastiCache", "DatabaseMemoryUsagePercentage", "CacheClusterId", "${module.redis.redis_replication_group_id}-001"]
-          ]
-          view    = "timeSeries"
-          stacked = false
-          region  = var.aws_region
-          title   = "Redis Metrics"
-          period  = 300
-        }
-      }
-    ]
-  })
-
-  tags = merge(var.common_tags, {
-    Name = "${var.project_name}-${local.environment}-dashboard"
-    Type = "cloudwatch-dashboard"
-  })
-}
-
-# Store important outputs in Parameter Store for easy access
+# Store important outputs in Parameter Store
 resource "aws_ssm_parameter" "cluster_endpoint" {
   name  = "/${var.project_name}/${local.environment}/eks/cluster-endpoint"
   type  = "String"
-  value = module.eks.cluster_endpoint
+  value = aws_eks_cluster.main.endpoint
 
   tags = merge(var.common_tags, {
     Name = "${var.project_name}-${local.environment}-cluster-endpoint"
@@ -289,4 +287,44 @@ resource "aws_ssm_parameter" "redis_endpoint" {
     Name = "${var.project_name}-${local.environment}-redis-endpoint"
     Type = "ssm-parameter"
   })
-} 
+}
+
+# ============================================================================
+# OUTPUTS
+# ============================================================================
+
+output "vpc_id" {
+  description = "ID of the VPC"
+  value       = module.vpc.vpc_id
+}
+
+output "cluster_name" {
+  description = "Name of the EKS cluster"
+  value       = aws_eks_cluster.main.name
+}
+
+output "cluster_endpoint" {
+  description = "Endpoint for EKS control plane"
+  value       = aws_eks_cluster.main.endpoint
+}
+
+output "rds_endpoint" {
+  description = "RDS instance endpoint"
+  value       = module.rds.db_instance_endpoint
+}
+
+output "redis_primary_endpoint" {
+  description = "Redis primary endpoint"
+  value       = module.redis.redis_primary_endpoint
+}
+
+output "s3_buckets" {
+  description = "S3 bucket names"
+  value = {
+    documents    = module.s3.documents_bucket_id
+    static_assets = module.s3.static_assets_bucket_id
+    ml_artifacts = module.s3.ml_artifacts_bucket_id
+    logs         = module.s3.logs_bucket_id
+    backups      = module.s3.backups_bucket_id
+  }
+}

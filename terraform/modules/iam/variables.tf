@@ -17,9 +17,11 @@ variable "common_tags" {
 variable "oidc_provider_arn" {
   description = "ARN of the EKS OIDC provider"
   type        = string
+  default     = ""
 }
 
 variable "oidc_provider_url" {
   description = "URL of the EKS OIDC provider"
   type        = string
+  default     = ""
 } 

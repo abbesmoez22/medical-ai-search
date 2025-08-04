@@ -10,6 +10,9 @@ terraform {
   }
 }
 
+# Get current AWS account ID
+data "aws_caller_identity" "current" {}
+
 # EKS Cluster Service Role
 resource "aws_iam_role" "eks_cluster" {
   name = "${var.project_name}-${var.environment}-eks-cluster-role"
@@ -131,15 +134,15 @@ resource "aws_iam_role" "aws_load_balancer_controller" {
       {
         Effect = "Allow"
         Principal = {
-          Federated = var.oidc_provider_arn
+          Federated = var.oidc_provider_arn != "" ? var.oidc_provider_arn : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/placeholder"
         }
         Action = "sts:AssumeRoleWithWebIdentity"
-        Condition = {
+        Condition = var.oidc_provider_url != "" ? {
           StringEquals = {
             "${var.oidc_provider_url}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
             "${var.oidc_provider_url}:aud" = "sts.amazonaws.com"
           }
-        }
+        } : {}
       }
     ]
   })

@@ -23,13 +23,13 @@ variable "environment" {
 variable "aws_region" {
   description = "AWS region where all resources will be created"
   type        = string
-  default     = "us-east-1"  # Oregon - good for US West Coast users
+  default     = "us-east-1"  # Virginia - good for US East Coast users
 }
 
 variable "availability_zones" {
   description = "List of availability zones for high availability"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]  # 3 zones in Oregon
+  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]  # 3 zones in Virginia
 }
 
 # ============================================================================
@@ -59,7 +59,7 @@ variable "private_subnet_cidrs" {
 variable "database_subnet_cidrs" {
   description = "IP ranges for database subnets (databases only)"
   type        = list(string)
-  default     = ["10.0.100.0/24", "10.0.200.0/24", "10.0.300.0/24"]  # ~250 IPs each
+  default     = ["10.0.100.0/24", "10.0.101.0/24", "10.0.102.0/24"]  # ~250 IPs each
 }
 
 # EKS Configuration
@@ -134,4 +134,6 @@ variable "common_tags" {
     Owner       = "platform-team"
     CostCenter  = "engineering"
   }
-} 
+}
+
+ 

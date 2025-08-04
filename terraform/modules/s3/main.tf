@@ -64,6 +64,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "documents" {
     id     = "document_lifecycle"
     status = "Enabled"
 
+    filter {}  # Apply to all objects
+
     transition {
       days          = 30
       storage_class = "STANDARD_IA"
@@ -147,6 +149,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "static_assets" {
     id     = "static_assets_lifecycle"
     status = "Enabled"
 
+    filter {}  # Apply to all objects
+
     noncurrent_version_expiration {
       noncurrent_days = 30
     }
@@ -197,6 +201,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "ml_artifacts" {
   rule {
     id     = "ml_artifacts_lifecycle"
     status = "Enabled"
+
+    filter {}  # Apply to all objects
 
     transition {
       days          = 90
@@ -257,16 +263,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "logs" {
     id     = "logs_lifecycle"
     status = "Enabled"
 
-    transition {
-      days          = 30
-      storage_class = "STANDARD_IA"
-    }
+    filter {}  # Apply to all objects
 
-    transition {
-      days          = 90
-      storage_class = "GLACIER"
-    }
-
+    # For logs, we'll just expire them without transitions since retention is short
     expiration {
       days = var.log_retention_days
     }
@@ -317,6 +316,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "backups" {
   rule {
     id     = "backups_lifecycle"
     status = "Enabled"
+
+    filter {}  # Apply to all objects
 
     transition {
       days          = 30
