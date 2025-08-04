@@ -1,0 +1,41 @@
+graph TB
+    subgraph "API Gateway Layer"
+        Kong[Kong Gateway :8100]
+    end
+    
+    subgraph "Application Services"
+        Auth[Auth Service :8010]
+        Doc[Document Service :8011]
+        Proc[Processing Service :8013]
+        Search[Search API :8012]
+        Index[Search Indexing :8014]
+    end
+    
+    subgraph "Data Layer"
+        PG[(PostgreSQL :5433)]
+        Redis[(Redis :6380)]
+        ES[(Elasticsearch :9201)]
+        S3[(AWS S3)]
+    end
+    
+    subgraph "Message Layer"
+        Kafka[Kafka :9095]
+    end
+    
+    Kong --> Auth
+    Kong --> Doc
+    Kong --> Search
+    
+    Doc --> PG
+    Doc --> Redis
+    Doc --> S3
+    Doc --> Kafka
+    
+    Proc --> Kafka
+    Proc --> PG
+    
+    Index --> Kafka
+    Index --> ES
+    
+    Search --> ES
+    Search --> PG
