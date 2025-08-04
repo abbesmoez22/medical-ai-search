@@ -1,20 +1,30 @@
 #!/bin/bash
 set -e
-set -u
 
-function create_user_and_database() {
+# Function to create database if it doesn't exist
+create_database() {
     local database=$1
-    echo "Creating user and database '$database'"
-    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
-        CREATE DATABASE $database;
-        GRANT ALL PRIVILEGES ON DATABASE $database TO $POSTGRES_USER;
+    echo "Creating database '$database'"
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+        SELECT 'CREATE DATABASE $database'
+        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$database')\gexec
 EOSQL
 }
 
-if [ -n "$POSTGRES_MULTIPLE_DATABASES" ]; then
-    echo "Multiple database creation requested: $POSTGRES_MULTIPLE_DATABASES"
-    for db in $(echo $POSTGRES_MULTIPLE_DATABASES | tr ',' ' '); do
-        create_user_and_database $db
-    done
-    echo "Multiple databases created"
-fi
+# Create databases for each service
+create_database "auth_db"
+create_database "document_db"  
+create_database "processing_db"
+create_database "search_db"
+
+echo "All databases created successfully!"
+
+# Grant permissions
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    GRANT ALL PRIVILEGES ON DATABASE auth_db TO $POSTGRES_USER;
+    GRANT ALL PRIVILEGES ON DATABASE document_db TO $POSTGRES_USER;
+    GRANT ALL PRIVILEGES ON DATABASE processing_db TO $POSTGRES_USER;
+    GRANT ALL PRIVILEGES ON DATABASE search_db TO $POSTGRES_USER;
+EOSQL
+
+echo "Database permissions granted successfully!"
