@@ -86,7 +86,23 @@ resource "aws_dynamodb_table" "terraform_locks" {
   }
 }
 
-# Output the backend configuration for use in other environments
+# Output individual values for the setup script
+output "backend_bucket" {
+  value       = aws_s3_bucket.terraform_state.id
+  description = "S3 bucket name for Terraform state"
+}
+
+output "backend_region" {
+  value       = data.aws_region.current.name
+  description = "AWS region for Terraform state"
+}
+
+output "backend_dynamodb_table" {
+  value       = aws_dynamodb_table.terraform_locks.name
+  description = "DynamoDB table name for Terraform state locking"
+}
+
+# Keep the complex output for reference
 output "backend_config" {
   value = {
     bucket         = aws_s3_bucket.terraform_state.id
@@ -95,7 +111,7 @@ output "backend_config" {
     dynamodb_table = aws_dynamodb_table.terraform_locks.name
     encrypt        = true
   }
-  description = "Backend configuration for Terraform state"
+  description = "Complete backend configuration for Terraform state"
 }
 
 data "aws_region" "current" {} 
